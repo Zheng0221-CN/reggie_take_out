@@ -17,7 +17,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -198,5 +197,55 @@ public class DishController {
         redisTemplate.opsForValue().set(key, dtoList, 60, TimeUnit.MINUTES);
 
         return R.success(dtoList);
+    }
+
+    /**
+     * 根据 id （批量）删除菜品
+     * @param ids
+     * @return
+     */
+    @DeleteMapping
+    public R<String> deleteByIds(@RequestParam List<Long> ids) {
+
+        // 直接删除
+        dishService.removeByIds(ids);
+        return R.success("删除成功");
+    }
+
+    /**
+     * 根据 id （批量停售菜品）
+     * @param ids
+     * @return
+     */
+    @PostMapping("/status/0")
+    public R<String> stopById(@RequestParam List<Long> ids) {
+
+        // 得到选中菜品的集合
+        List<Dish> dishes = dishService.listByIds(ids);
+
+        // 更新售卖状态
+        for (Dish dish : dishes) {
+            dish.setStatus(0);
+        }
+
+        // 数据库中更新售卖状态
+        dishService.updateBatchById(dishes);
+        return R.success("停售菜品成功");
+    }
+
+    @PostMapping("/status/1")
+    public R<String> startById(@RequestParam List<Long> ids) {
+
+        // 得到选中菜品的集合
+        List<Dish> dishes = dishService.listByIds(ids);
+
+        // 更新售卖状态
+        for (Dish dish : dishes) {
+            dish.setStatus(1);
+        }
+
+        // 数据库中更新售卖状态
+        dishService.updateBatchById(dishes);
+        return R.success("启售菜品成功");
     }
 }

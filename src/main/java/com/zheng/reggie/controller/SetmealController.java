@@ -47,6 +47,8 @@ public class SetmealController {
         return R.success("新增套餐成功");
     }
 
+
+
     /**
      * 新增套餐
      *
@@ -109,6 +111,10 @@ public class SetmealController {
         return R.success("删除套餐成功");
     }
 
+
+
+
+
     /**
      * 根据条件查询获取套餐数据
      *
@@ -126,5 +132,39 @@ public class SetmealController {
         List<Setmeal> setmealList = setmealService.list(queryWrapper);
 
         return R.success(setmealList);
+    }
+
+    /**
+     * 根据 id （批量）停售套餐
+     * @param ids
+     * @return
+     */
+    @PostMapping("/status/0")
+    @CacheEvict(value = "setmealCache", allEntries = true)
+    public R<String> stopById(@RequestParam List<Long> ids) {
+
+        List<Setmeal> setmeals = setmealService.listByIds(ids);
+        for (Setmeal setmeal : setmeals) {
+            setmeal.setStatus(0);
+        }
+        setmealService.updateBatchById(setmeals);
+        return R.success("停售成功");
+    }
+
+    /**
+     * 根据 id （批量）启售套餐
+     * @param ids
+     * @return
+     */
+    @PostMapping("/status/1")
+    @CacheEvict(value = "setmealCache", allEntries = true)
+    public R<String> startById(@RequestParam List<Long> ids) {
+
+        List<Setmeal> setmeals = setmealService.listByIds(ids);
+        for (Setmeal setmeal : setmeals) {
+            setmeal.setStatus(1);
+        }
+        setmealService.updateBatchById(setmeals);
+        return R.success("启售成功");
     }
 }
