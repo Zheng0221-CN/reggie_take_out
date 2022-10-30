@@ -37,9 +37,8 @@ public class Orders implements Serializable {
     private LocalDateTime checkoutTime;
 
 
-    //支付方式 1微信，2支付宝
+    //支付方式 1 微信，2 支付宝
     private Integer payMethod;
-
 
     //实收金额
     private BigDecimal amount;
