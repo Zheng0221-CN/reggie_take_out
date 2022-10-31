@@ -81,12 +81,40 @@ public class ShoppingCartController {
         return R.success(shoppingCarts);
     }
 
-    @GetMapping("/clean")
+    @DeleteMapping("/clean")
     public R<String> clean() {
         LambdaQueryWrapper<ShoppingCart> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ShoppingCart::getId, BaseContext.getCurrentId());
+        queryWrapper.eq(ShoppingCart::getUserId, BaseContext.getCurrentId());
         shoppingCartService.remove(queryWrapper);
 
         return R.success("清空购物车成功");
+    }
+
+    @PostMapping("/sub")
+    public R<ShoppingCart> sub(@RequestBody ShoppingCart cart) {
+        log.info(cart.toString());
+
+        // 通过用户 id 和菜品 id 或套餐 id，查找要减少数量的购物车数据
+        LambdaQueryWrapper<ShoppingCart> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ShoppingCart::getUserId, BaseContext.getCurrentId());
+        if (cart.getDishId() != null) {
+            queryWrapper.eq(ShoppingCart::getDishId, cart.getDishId());
+        } else {
+            queryWrapper.eq(ShoppingCart::getSetmealId, cart.getSetmealId());
+        }
+        ShoppingCart shoppingCart = shoppingCartService.getOne(queryWrapper);
+
+        // 得到对应主键
+        Long id = shoppingCart.getId();
+
+        // 如果数量为 1 ，则直接删除这条购物车数据，数量大于 1 ，则更新
+        if (shoppingCart.getNumber() == 1) {
+            shoppingCartService.removeById(id);
+        } else {
+            shoppingCartService.updateById(shoppingCart);
+        }
+
+        shoppingCart.setNumber(shoppingCart.getNumber() - 1);
+        return R.success(shoppingCart);
     }
 }
