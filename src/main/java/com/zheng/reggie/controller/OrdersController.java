@@ -2,10 +2,15 @@ package com.zheng.reggie.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zheng.reggie.common.BaseContext;
 import com.zheng.reggie.common.R;
+import com.zheng.reggie.dto.OrderDto;
+import com.zheng.reggie.entity.OrderDetail;
 import com.zheng.reggie.entity.Orders;
+import com.zheng.reggie.service.OrderDetailService;
 import com.zheng.reggie.service.OrdersService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +27,9 @@ public class OrdersController {
 
     @Autowired
     private OrdersService ordersService;
+
+    @Autowired
+    private OrderDetailService orderDetailService;
 
     /**
      * 用户下单
@@ -48,8 +56,6 @@ public class OrdersController {
      */
     @GetMapping("/page")
     public R<Page> page(int page, int pageSize, String number, String beginTime, String endTime) throws ParseException {
-        log.info("page = {}, pageSize = {}, number = {}, beginTime = {}, endTime = {}",
-                page, pageSize, number, beginTime, endTime);
 
         // 构造分页构造器
         Page<Orders> pageInfo = new Page<>(page, pageSize);
@@ -106,5 +112,45 @@ public class OrdersController {
     public R<String> status(@RequestBody Orders orders) {
         ordersService.updateById(orders);
         return R.success("订单状态更改成功");
+    }
+
+    @GetMapping("/userPage")
+    public R<Page> userPage(int page, int pageSize) {
+
+        // 先得到 Orders 的 Page 对象
+        Page<Orders> pageInfo = new Page<>(page, pageSize);
+        LambdaQueryWrapper<Orders> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Orders::getUserId, BaseContext.getCurrentId());
+        queryWrapper.orderByDesc(Orders::getOrderTime);
+        ordersService.page(pageInfo, queryWrapper);
+
+        // 创建 OrderDto 的 Page 对象
+        Page<OrderDto> dtoPage = new Page<>(page, pageSize);
+
+        // 对象拷贝
+        BeanUtils.copyProperties(pageInfo, dtoPage, "records");
+        List<Orders> records = pageInfo.getRecords();
+
+        List<OrderDto> orderDtoList = records.stream().map(item -> {
+
+            // 得到订单号
+            Long orderId = item.getId();
+
+            // 根据订单号，得到对应 orderDetail 的集合
+            LambdaQueryWrapper<OrderDetail> orderDetailQueryWrapper = new LambdaQueryWrapper<>();
+            orderDetailQueryWrapper.eq(OrderDetail::getOrderId, orderId);
+            orderDetailService.list(orderDetailQueryWrapper);
+            List<OrderDetail> orderDetails = orderDetailService.list(orderDetailQueryWrapper);
+
+            // 处理 OrderDto 对象
+            OrderDto orderDto = new OrderDto();
+            BeanUtils.copyProperties(item, orderDto);
+            orderDto.setOrderDetails(orderDetails);
+            return orderDto;
+        }).collect(Collectors.toList());
+
+        dtoPage.setRecords(orderDtoList);
+
+        return R.success(dtoPage);
     }
 }
